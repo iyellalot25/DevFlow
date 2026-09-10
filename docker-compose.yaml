@@ -5,9 +5,9 @@ services:
     container_name: devflow-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: devflow
-      POSTGRES_PASSWORD: devflow_dev_password
-      POSTGRES_DB: devflow
+      POSTGRES_USER: ${POSTGRES_USER:-devflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-devflow}
     ports:
       - "5432:5432"
     volumes:
