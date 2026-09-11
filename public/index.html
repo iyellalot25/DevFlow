@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>DevFlow</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        max-width: 900px;
+        margin: 40px auto;
+        padding: 0 20px;
+        color: #1a1a1a;
+        background: #fafafa;
+      }
+      h1 {
+        font-size: 22px;
+      }
+      h2 {
+        font-size: 16px;
+        margin-top: 32px;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 6px;
+      }
+      .card {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+      }
+      input,
+      textarea,
+      select {
+        display: block;
+        width: 100%;
+        padding: 8px;
+        margin: 6px 0 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+      button {
+        padding: 8px 14px;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button:hover {
+        background: #1d4ed8;
+      }
+      button:disabled {
+        background: #aaa;
+        cursor: not-allowed;
+      }
+      button.secondary {
+        background: #6b7280;
+      }
+      button.secondary:hover {
+        background: #4b5563;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+      }
+      .muted {
+        color: #666;
+        font-size: 13px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .badge.pending {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .badge.processing {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+      .badge.done {
+        background: #d1fae5;
+        color: #065f46;
+      }
+      .badge.failed {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .badge.todo {
+        background: #f3f4f6;
+        color: #374151;
+      }
+      .badge.in_progress {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+      .subtask {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .subtask:last-child {
+        border-bottom: none;
+      }
+      #error-box {
+        color: #991b1b;
+        background: #fee2e2;
+        padding: 8px 12px;
+        border-radius: 4px;
+        margin: 10px 0;
+        display: none;
+      }
+      .hidden {
+        display: none;
+      }
+      .project-item,
+      .task-item {
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 4px;
+      }
+      .project-item:hover,
+      .task-item:hover {
+        background: #f3f4f6;
+      }
+      .project-item.active,
+      .task-item.active {
+        background: #dbeafe;
+      }
+      progress {
+        width: 100%;
+        height: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>DevFlow</h1>
+    <p class="muted">
+      Turn a vague dev task into a checklist. Register or log in to start.
+    </p>
+    <div id="error-box"></div>
+
+    <!-- AUTH -->
+    <div id="auth-section" class="card">
+      <div id="logged-out">
+        <h2 style="margin-top: 0">Login / Register</h2>
+        <input id="email" type="email" placeholder="email@example.com" />
+        <input
+          id="password"
+          type="password"
+          placeholder="password (min 8 chars)"
+        />
+        <div class="row">
+          <button onclick="register()">Register</button>
+          <button class="secondary" onclick="login()">Login</button>
+        </div>
+      </div>
+      <div id="logged-in" class="hidden row">
+        <span>Logged in as <strong id="current-email"></strong></span>
+        <button class="secondary" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <div id="app" class="hidden">
+      <!-- PROJECTS -->
+      <h2>Projects</h2>
+      <div class="card">
+        <input id="project-name" placeholder="Project name" />
+        <input id="project-desc" placeholder="Description (optional)" />
+        <button onclick="createProject()">Create Project</button>
+      </div>
+      <div id="project-list"></div>
+
+      <!-- TASKS -->
+      <div id="tasks-section" class="hidden">
+        <h2>Tasks in <span id="active-project-name"></span></h2>
+        <div class="card">
+          <textarea
+            id="task-desc"
+            rows="2"
+            placeholder="Describe a vague dev task, e.g. Move my Express API from SQLite to PostgreSQL, keep endpoints working, and dockerize it."
+          ></textarea>
+          <button onclick="createTask()">Add Task</button>
+        </div>
+        <div id="task-list"></div>
+      </div>
+
+      <!-- SUBTASKS -->
+      <div id="subtasks-section" class="hidden">
+        <h2>Subtasks for: <span id="active-task-desc"></span></h2>
+        <div class="card">
+          <div class="row">
+            <button id="decompose-btn" onclick="decompose()">
+              Decompose with AI
+            </button>
+            <span id="job-status" class="muted"></span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="row" style="margin-bottom: 8px">
+            <strong>Progress</strong>
+            <span id="progress-text" class="muted"></span>
+          </div>
+          <progress id="progress-bar" value="0" max="100"></progress>
+        </div>
+        <div id="subtask-list" class="card"></div>
+      </div>
+    </div>
+
+    <script>
+      const API = "";
+      let token = localStorage.getItem("devflow_token") || null;
+      let currentEmail = localStorage.getItem("devflow_email") || null;
+      let activeProjectId = null;
+      let activeTaskId = null;
+      let pollTimer = null;
+
+      function showError(msg) {
+        const box = document.getElementById("error-box");
+        box.textContent = msg;
+        box.style.display = "block";
+        setTimeout(() => {
+          box.style.display = "none";
+        }, 5000);
+      }
+
+      async function api(path, options = {}) {
+        const headers = {
+          "Content-Type": "application/json",
+          ...(options.headers || {}),
+        };
+        if (token) headers["Authorization"] = "Bearer " + token;
+
+        const res = await fetch(API + path, { ...options, headers });
+
+        // Handle expired token or unauthorized response
+        if (res.status === 401) {
+          logout();
+          showError("Session expired. Please log in again.");
+          throw new Error("Session expired");
+        }
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Request failed");
+        return data;
+      }
+
+      function updateAuthUI() {
+        if (token) {
+          document.getElementById("logged-out").classList.add("hidden");
+          document.getElementById("logged-in").classList.remove("hidden");
+          document.getElementById("current-email").textContent = currentEmail;
+          document.getElementById("app").classList.remove("hidden");
+          loadProjects();
+        } else {
+          document.getElementById("logged-out").classList.remove("hidden");
+          document.getElementById("logged-in").classList.add("hidden");
+          document.getElementById("app").classList.add("hidden");
+        }
+      }
+
+      async function register() {
+        try {
+          const email = document.getElementById("email").value;
+          const password = document.getElementById("password").value;
+          const data = await api("/auth/register", {
+            method: "POST",
+            body: JSON.stringify({ email, password }),
+          });
+          setSession(data.token, data.user.email);
+        } catch (e) {
+          showError(e.message);
+        }
+      }
+
+      async function login() {
+        try {
+          const email = document.getElementById("email").value;
+          const password = document.getElementById("password").value;
+          const data = await api("/auth/login", {
+            method: "POST",
+            body: JSON.stringify({ email, password }),
+          });
+          setSession(data.token, data.user.email);
+        } catch (e) {
+          showError(e.message);
+        }
+      }
+
+      function setSession(t, email) {
+        token = t;
+        currentEmail = email;
+        localStorage.setItem("devflow_token", t);
+        localStorage.setItem("devflow_email", email);
+        updateAuthUI();
+      }
+
+      function logout() {
+        token = null;
+        currentEmail = null;
+        localStorage.removeItem("devflow_token");
+        localStorage.removeItem("devflow_email");
+
+        // Reset active selections
+        activeProjectId = null;
+        activeTaskId = null;
+
+        // Hide project/task/subtask UI sections
+        document.getElementById("tasks-section").classList.add("hidden");
+        document.getElementById("subtasks-section").classList.add("hidden");
+        if (pollTimer) clearInterval(pollTimer);
+
+        updateAuthUI();
+      }
+
+      async function loadProjects() {
+        try {
+          const projects = await api("/projects");
+          const list = document.getElementById("project-list");
+          list.innerHTML =
+            projects
+              .map(
+                (p) => `
+      <div class="project-item ${p.id === activeProjectId ? "active" : ""}" onclick="selectProject(${p.id}, '${escapeHtml(p.name)}')">
+        <strong>${escapeHtml(p.name)}</strong>
+        ${p.description ? `<div class="muted">${escapeHtml(p.description)}</div>` : ""}
+      </div>
+    `,
+              )
+              .join("") ||
+            '<p class="muted">No projects yet. Create one above.</p>';
+        } catch (e) {
+          showError(e.message);
+        }
+      }
+
+      async function createProject() {
+        try {
+          const name = document.getElementById("project-name").value;
+          const description = document.getElementById("project-desc").value;
+          if (!name.trim()) return showError("Project name is required");
+          await api("/projects", {
+            method: "POST",
+            body: JSON.stringify({ name, description }),
+          });
+          document.getElementById("project-name").value = "";
+          document.getElementById("project-desc").value = "";
+          loadProjects();
+        } catch (e) {
+          showError(e.message);
+        }
+      }
+
+      function selectProject(id, name) {
+        activeProjectId = id;
+        activeTaskId = null;
+        document.getElementById("active-project-name").textContent = name;
+        document.getElementById("tasks-section").classList.remove("hidden");
+        document.getElementById("subtasks-section").classList.add("hidden");
+        if (pollTimer) clearInterval(pollTimer);
+        loadProjects();
+        loadTasks();
+      }
+
+      async function loadTasks() {
+        try {
+          const tasks = await api(`/projects/${activeProjectId}/tasks`);
+          const list = document.getElementById("task-list");
+          list.innerHTML =
+            tasks
+              .map(
+                (t) => `
+      <div class="task-item ${t.id === activeTaskId ? "active" : ""}" onclick="selectTask(${t.id}, '${escapeHtml(t.raw_description).replace(/'/g, "\\'")}')">
+        ${escapeHtml(t.raw_description)}
+        <span class="badge ${t.status}">${t.status}</span>
+      </div>
+    `,
+              )
+              .join("") || '<p class="muted">No tasks yet. Add one above.</p>';
+        } catch (e) {
+          showError(e.message);
+        }
+      }
+
+      async function createTask() {
+        try {
+          const raw_description = document.getElementById("task-desc").value;
+          if (!raw_description.trim())
+            return showError("Task description is required");
+          await api(`/projects/${activeProjectId}/tasks`, {
+            method: "POST",
+            body: JSON.stringify({ raw_description }),
+          });
+          document.getElementById("task-desc").value = "";
+          loadTasks();
+        } catch (e) {
+          showError(e.message);
+        }
+      }
+
+      function selectTask(id, desc) {
+        activeTaskId = id;
+        document.getElementById("active-task-desc").textContent = desc;
+        document.getElementById("subtasks-section").classList.remove("hidden");
+        document.getElementById("job-status").textContent = "";
+        loadTasks();
+        loadSubtasks();
+      }
+
+      async function decompose() {
+        try {
+          document.getElementById("decompose-btn").disabled = true;
+          document.getElementById("job-status").textContent = "Queuing job...";
+          const job = await api(`/tasks/${activeTaskId}/decompose`, {
+            method: "POST",
+          });
+          pollJob(job.id);
+        } catch (e) {
+          showError(e.message);
+          document.getElementById("decompose-btn").disabled = false;
+        }
+      }
+
+      function pollJob(jobId) {
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = setInterval(async () => {
+          try {
+            const job = await api(`/jobs/${jobId}`);
+            document.getElementById("job-status").innerHTML =
+              `Job status: <span class="badge ${job.status}">${job.status}</span>`;
+            if (job.status === "done") {
+              clearInterval(pollTimer);
+              document.getElementById("decompose-btn").disabled = false;
+              loadSubtasks();
+              loadTasks();
+            } else if (job.status === "failed") {
+              clearInterval(pollTimer);
+              document.getElementById("decompose-btn").disabled = false;
+              showError(
+                "Decomposition failed: " + (job.error || "unknown error"),
+              );
+            }
+          } catch (e) {
+            clearInterval(pollTimer);
+            showError(e.message);
+          }
+        }, 1500);
+      }
+
+      async function loadSubtasks() {
+        try {
+          const subtasks = await api(`/tasks/${activeTaskId}/subtasks`);
+          renderSubtasks(subtasks);
+        } catch (e) {
+          showError(e.message);
+        }
+      }
+
+      function renderSubtasks(subtasks) {
+        const list = document.getElementById("subtask-list");
+        if (subtasks.length === 0) {
+          list.innerHTML =
+            '<p class="muted">No subtasks yet. Click "Decompose with AI" above.</p>';
+          document.getElementById("progress-bar").value = 0;
+          document.getElementById("progress-text").textContent = "";
+          return;
+        }
+        list.innerHTML = subtasks
+          .map(
+            (s) => `
+    <div class="subtask">
+      <select onchange="updateStatus(${s.id}, this.value)">
+        <option value="todo" ${s.status === "todo" ? "selected" : ""}>todo</option>
+        <option value="in_progress" ${s.status === "in_progress" ? "selected" : ""}>in_progress</option>
+        <option value="done" ${s.status === "done" ? "selected" : ""}>done</option>
+      </select>
+      <span style="flex:1">${escapeHtml(s.description)}</span>
+      <span class="badge ${s.status}">${s.status}</span>
+    </div>
+  `,
+          )
+          .join("");
+
+        const done = subtasks.filter((s) => s.status === "done").length;
+        const pct = Math.round((done / subtasks.length) * 100);
+        document.getElementById("progress-bar").value = pct;
+        document.getElementById("progress-text").textContent =
+          `${done} / ${subtasks.length} done (${pct}%)`;
+      }
+
+      async function updateStatus(subtaskId, status) {
+        try {
+          await api(`/subtasks/${subtaskId}`, {
+            method: "PATCH",
+            body: JSON.stringify({ status }),
+          });
+          loadSubtasks();
+        } catch (e) {
+          showError(e.message);
+        }
+      }
+
+      function escapeHtml(str) {
+        const div = document.createElement("div");
+        div.textContent = str || "";
+        return div.innerHTML;
+      }
+
+      updateAuthUI();
+    </script>
+  </body>
+</html>
