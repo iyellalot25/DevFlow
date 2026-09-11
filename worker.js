@@ -14,7 +14,7 @@ async function pollOnce() {
 
     try {
       const result = await processDecompositionJob(job.task_id);
-      await jobService.completeJob(job.id, result);
+      await jobService.completeJob(job.id, result, result.usage);
       console.log(`[worker] job ${job.id} done`);
     } catch (err) {
       console.error(`[worker] job ${job.id} failed:`, err.message);

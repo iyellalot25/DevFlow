@@ -46,3 +46,8 @@ CREATE TABLE IF NOT EXISTS decomposition_jobs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   completed_at TIMESTAMPTZ
 );
+
+ALTER TABLE decomposition_jobs
+  ADD COLUMN IF NOT EXISTS prompt_tokens INTEGER,
+  ADD COLUMN IF NOT EXISTS completion_tokens INTEGER,
+  ADD COLUMN IF NOT EXISTS model_name TEXT;

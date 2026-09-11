@@ -57,12 +57,23 @@ async function claimNextPendingJob() {
   }
 }
 
-async function completeJob(jobId, resultPayload) {
+async function completeJob(jobId, resultPayload, usage = {}) {
   await pool.query(
     `UPDATE decomposition_jobs
-     SET status = 'done', result = $1, completed_at = now()
-     WHERE id = $2`,
-    [JSON.stringify(resultPayload), jobId],
+     SET status = 'done',
+         result = $1,
+         completed_at = now(),
+         prompt_tokens = $2,
+         completion_tokens = $3,
+         model_name = $4
+     WHERE id = $5`,
+    [
+      JSON.stringify(resultPayload.subtasks || resultPayload),
+      usage.promptTokens ?? null,
+      usage.completionTokens ?? null,
+      usage.modelName ?? null,
+      jobId,
+    ],
   );
 }
 
