@@ -2,7 +2,9 @@ const express = require("express");
 const router = express.Router();
 const taskService = require("../services/taskService");
 const projectService = require("../services/projectService");
-const { HARDCODED_TEAM_ID } = require("./projects");
+const requireAuth = require("../middleware/auth");
+
+router.use(requireAuth);
 
 router.post("/projects/:projectId/tasks", async (req, res) => {
   const { projectId } = req.params;
@@ -20,7 +22,7 @@ router.post("/projects/:projectId/tasks", async (req, res) => {
   try {
     const exists = await projectService.projectExistsForTeam(
       projectId,
-      HARDCODED_TEAM_ID,
+      req.user.team_id,
     );
     if (!exists) return res.status(404).json({ error: "Project not found" });
 
@@ -41,7 +43,7 @@ router.get("/projects/:projectId/tasks", async (req, res) => {
   try {
     const exists = await projectService.projectExistsForTeam(
       projectId,
-      HARDCODED_TEAM_ID,
+      req.user.team_id,
     );
     if (!exists) return res.status(404).json({ error: "Project not found" });
 

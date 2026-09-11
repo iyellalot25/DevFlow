@@ -1,8 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const projectService = require("../services/projectService");
+const requireAuth = require("../middleware/auth");
 
-const HARDCODED_TEAM_ID = 1; // TODO: replace with req.user.team_id in Phase 3
+//Use auth middleware
+router.use(requireAuth);
 
 router.post("/", async (req, res) => {
   const { name, description } = req.body;
@@ -14,7 +16,7 @@ router.post("/", async (req, res) => {
 
   try {
     const project = await projectService.createProject(
-      HARDCODED_TEAM_ID,
+      req.user.team_id,
       name.trim(),
       description,
     );
@@ -27,7 +29,7 @@ router.post("/", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const projects = await projectService.listProjects(HARDCODED_TEAM_ID);
+    const projects = await projectService.listProjects(req.user.team_id);
     res.json(projects);
   } catch (err) {
     console.error(err);
@@ -36,4 +38,3 @@ router.get("/", async (req, res) => {
 });
 
 module.exports = router;
-module.exports.HARDCODED_TEAM_ID = HARDCODED_TEAM_ID;

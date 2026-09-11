@@ -2,7 +2,9 @@ const express = require("express");
 const router = express.Router();
 const subtaskService = require("../services/subtaskService");
 const taskService = require("../services/taskService");
-const { HARDCODED_TEAM_ID } = require("./projects");
+const requireAuth = require("../middleware/auth");
+
+router.use(requireAuth);
 
 router.post("/tasks/:taskId/subtasks", async (req, res) => {
   const { taskId } = req.params;
@@ -20,7 +22,7 @@ router.post("/tasks/:taskId/subtasks", async (req, res) => {
   try {
     const exists = await taskService.taskExistsForTeam(
       taskId,
-      HARDCODED_TEAM_ID,
+      req.user.team_id,
     );
     if (!exists) return res.status(404).json({ error: "Task not found" });
 
@@ -42,7 +44,7 @@ router.get("/tasks/:taskId/subtasks", async (req, res) => {
   try {
     const exists = await taskService.taskExistsForTeam(
       taskId,
-      HARDCODED_TEAM_ID,
+      req.user.team_id,
     );
     if (!exists) return res.status(404).json({ error: "Task not found" });
 
@@ -58,7 +60,6 @@ router.patch("/subtasks/:id", async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
-  //Validation
   if (!status || !subtaskService.VALID_SUBTASK_STATUSES.includes(status)) {
     return res.status(400).json({
       error: `status must be one of: ${subtaskService.VALID_SUBTASK_STATUSES.join(", ")}`,
@@ -69,7 +70,7 @@ router.patch("/subtasks/:id", async (req, res) => {
     const updated = await subtaskService.updateSubtaskStatus(
       id,
       status,
-      HARDCODED_TEAM_ID,
+      req.user.team_id,
     );
     if (!updated) return res.status(404).json({ error: "Subtask not found" });
     res.json(updated);
