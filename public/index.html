@@ -187,6 +187,16 @@
       <!-- TASKS -->
       <div id="tasks-section" class="hidden">
         <h2>Tasks in <span id="active-project-name"></span></h2>
+        <h2>
+          Tasks in <span id="active-project-name"></span>
+          <button
+            class="secondary"
+            style="font-size: 12px; padding: 4px 10px"
+            onclick="downloadReport()"
+          >
+            Download PDF Report
+          </button>
+        </h2>
         <div class="card">
           <textarea
             id="task-desc"
@@ -406,6 +416,29 @@
           });
           document.getElementById("task-desc").value = "";
           loadTasks();
+        } catch (e) {
+          showError(e.message);
+        }
+      }
+
+      async function downloadReport() {
+        try {
+          const res = await fetch(`/reports/${activeProjectId}/pdf`, {
+            headers: { Authorization: "Bearer " + token },
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || "Failed to generate report");
+          }
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "devflow-report.pdf";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
         } catch (e) {
           showError(e.message);
         }
