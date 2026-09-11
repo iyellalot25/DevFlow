@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const pool = require("../db");
 
 const SALT_ROUNDS = 10;
-const JWT_EXPIRY = "24h";
+const JWT_EXPIRY = "6h";
 
 async function registerUser(email, password) {
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
