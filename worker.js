@@ -25,7 +25,14 @@ async function pollOnce() {
   }
 }
 
-function startWorker() {
+async function startWorker() {
+  const recoveredIds = await jobService.recoverStuckJobs();
+  if (recoveredIds.length > 0) {
+    console.log(
+      `[worker] recovered ${recoveredIds.length} stuck job(s) from a previous crash: ${recoveredIds.join(", ")}`,
+    );
+  }
+
   console.log(`[worker] started, polling every ${POLL_INTERVAL_MS}ms`);
   setInterval(pollOnce, POLL_INTERVAL_MS);
 }

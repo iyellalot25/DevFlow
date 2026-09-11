@@ -86,10 +86,25 @@ async function failJob(jobId, errorMessage) {
   );
 }
 
+// Startup safeguard: any job still 'processing' when the worker starts
+// must be orphaned (its owning process died mid-job, since nothing else
+// in the system can leave a job in 'processing' state). Reset it to
+// 'pending' so claimNextPendingJob() picks it up again.
+async function recoverStuckJobs() {
+  const result = await pool.query(
+    `UPDATE decomposition_jobs
+     SET status = 'pending'
+     WHERE status = 'processing'
+     RETURNING id`,
+  );
+  return result.rows.map((r) => r.id);
+}
+
 module.exports = {
   createJob,
   getJobForTeam,
   claimNextPendingJob,
   completeJob,
   failJob,
+  recoverStuckJobs,
 };
