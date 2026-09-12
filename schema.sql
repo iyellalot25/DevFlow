@@ -29,6 +29,17 @@ CREATE TABLE IF NOT EXISTS teams (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'projects_team_id_fkey'
+  ) THEN
+    ALTER TABLE projects
+      ADD CONSTRAINT projects_team_id_fkey
+      FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
