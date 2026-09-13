@@ -25,10 +25,12 @@ router.post("/register", async (req, res) => {
 
     const user = await authService.registerUser(email, password);
     const token = authService.generateToken(user);
+    const refresh_token = await authService.issueRefreshToken(user.id);
 
     res.status(201).json({
       user: { id: user.id, email: user.email, team_id: user.team_id },
       token,
+      refresh_token,
     });
   } catch (err) {
     console.error(err);
@@ -59,10 +61,36 @@ router.post("/login", async (req, res) => {
     }
 
     const token = authService.generateToken(user);
+    const refresh_token = await authService.issueRefreshToken(user.id);
     res.json({
       user: { id: user.id, email: user.email, team_id: user.team_id },
       token,
+      refresh_token,
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/refresh", async (req, res) => {
+  const { refresh_token } = req.body;
+
+  //Validation
+  if (!refresh_token || typeof refresh_token !== "string") {
+    return res.status(400).json({ error: "refresh_token is required" });
+  }
+
+  try {
+    const user = await authService.verifyRefreshToken(refresh_token);
+    if (!user) {
+      return res
+        .status(401)
+        .json({ error: "Invalid or expired refresh token" });
+    }
+
+    const token = authService.generateToken(user);
+    res.json({ token });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal server error" });
