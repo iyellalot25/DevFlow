@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const pool = require("../db");
 
+const SALT_ROUNDS = 10;
 const JWT_EXPIRY = "1h";
 const REFRESH_TOKEN_TTL_DAYS = 7;
 

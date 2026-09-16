@@ -12,6 +12,27 @@ services:
       - "5432:5432"
     volumes:
       - devflow_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-devflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: devflow-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL_DOCKER}
+      JWT_SECRET: ${JWT_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      PORT: ${PORT:-3000}
+      NODE_ENV: production
+    ports:
+      - "${PORT:-3000}:3000"
 
 volumes:
   devflow_pgdata:

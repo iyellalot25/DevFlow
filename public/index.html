@@ -278,15 +278,20 @@
           credentials: "include",
         });
 
-        if (res.status === 401) {
+        // Skip token refresh logic for auth endpoints (login/register)
+        const isAuthRequest =
+          path.startsWith("/auth/login") || path.startsWith("/auth/register");
+
+        if (res.status === 401 && !isAuthRequest) {
           if (allowRetry) {
             const refreshed = await tryRefresh();
             if (refreshed) {
               return api(path, options, false);
             }
+            // Only display "Session expired" when active session refresh fails mid-usage
+            showError("Session expired. Please log in again.");
           }
           handleLoggedOut();
-          showError("Session expired. Please log in again.");
           throw new Error("Session expired");
         }
 
@@ -322,10 +327,12 @@
 
       async function checkSession() {
         try {
+          // Pass allowRetry = false so it doesn't try to refresh if completely logged out
           const data = await api("/auth/me", {}, false);
           currentEmail = data.user.email;
           isLoggedIn = true;
         } catch (e) {
+          // Expected behavior when logged out or when session doesn't exist
           isLoggedIn = false;
         }
         renderAuthUI();
