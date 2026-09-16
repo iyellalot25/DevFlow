@@ -189,13 +189,20 @@
         <h2>Tasks in <span id="active-project-name"></span></h2>
         <h2>
           Tasks in <span id="active-project-name"></span>
-          <button
+          <a
+            id="download-report-link"
             class="secondary"
-            style="font-size: 12px; padding: 4px 10px"
-            onclick="downloadReport()"
+            style="
+              font-size: 12px;
+              padding: 4px 10px;
+              text-decoration: none;
+              display: inline-block;
+            "
+            href="#"
+            target="_blank"
           >
             Download PDF Report
-          </button>
+          </a>
         </h2>
         <div class="card">
           <textarea
@@ -232,8 +239,8 @@
 
     <script>
       const API = "";
-      let token = localStorage.getItem("devflow_token") || null;
-      let currentEmail = localStorage.getItem("devflow_email") || null;
+      let currentEmail = null;
+      let isLoggedIn = false;
       let activeProjectId = null;
       let activeTaskId = null;
       let pollTimer = null;
@@ -247,18 +254,38 @@
         }, 5000);
       }
 
-      async function api(path, options = {}) {
+      async function tryRefresh() {
+        try {
+          const res = await fetch(API + "/auth/refresh", {
+            method: "POST",
+            credentials: "include",
+          });
+          return res.ok;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      async function api(path, options = {}, allowRetry = true) {
         const headers = {
           "Content-Type": "application/json",
           ...(options.headers || {}),
         };
-        if (token) headers["Authorization"] = "Bearer " + token;
 
-        const res = await fetch(API + path, { ...options, headers });
+        const res = await fetch(API + path, {
+          ...options,
+          headers,
+          credentials: "include",
+        });
 
-        // Handle expired token or unauthorized response
         if (res.status === 401) {
-          logout();
+          if (allowRetry) {
+            const refreshed = await tryRefresh();
+            if (refreshed) {
+              return api(path, options, false);
+            }
+          }
+          handleLoggedOut();
           showError("Session expired. Please log in again.");
           throw new Error("Session expired");
         }
@@ -268,8 +295,8 @@
         return data;
       }
 
-      function updateAuthUI() {
-        if (token) {
+      function renderAuthUI() {
+        if (isLoggedIn) {
           document.getElementById("logged-out").classList.add("hidden");
           document.getElementById("logged-in").classList.remove("hidden");
           document.getElementById("current-email").textContent = currentEmail;
@@ -282,6 +309,28 @@
         }
       }
 
+      function handleLoggedOut() {
+        isLoggedIn = false;
+        currentEmail = null;
+        activeProjectId = null;
+        activeTaskId = null;
+        document.getElementById("tasks-section").classList.add("hidden");
+        document.getElementById("subtasks-section").classList.add("hidden");
+        if (pollTimer) clearInterval(pollTimer);
+        renderAuthUI();
+      }
+
+      async function checkSession() {
+        try {
+          const data = await api("/auth/me", {}, false);
+          currentEmail = data.user.email;
+          isLoggedIn = true;
+        } catch (e) {
+          isLoggedIn = false;
+        }
+        renderAuthUI();
+      }
+
       async function register() {
         try {
           const email = document.getElementById("email").value;
@@ -290,7 +339,9 @@
             method: "POST",
             body: JSON.stringify({ email, password }),
           });
-          setSession(data.token, data.user.email);
+          currentEmail = data.user.email;
+          isLoggedIn = true;
+          renderAuthUI();
         } catch (e) {
           showError(e.message);
         }
@@ -304,36 +355,24 @@
             method: "POST",
             body: JSON.stringify({ email, password }),
           });
-          setSession(data.token, data.user.email);
+          currentEmail = data.user.email;
+          isLoggedIn = true;
+          renderAuthUI();
         } catch (e) {
           showError(e.message);
         }
       }
 
-      function setSession(t, email) {
-        token = t;
-        currentEmail = email;
-        localStorage.setItem("devflow_token", t);
-        localStorage.setItem("devflow_email", email);
-        updateAuthUI();
-      }
-
-      function logout() {
-        token = null;
-        currentEmail = null;
-        localStorage.removeItem("devflow_token");
-        localStorage.removeItem("devflow_email");
-
-        // Reset active selections
-        activeProjectId = null;
-        activeTaskId = null;
-
-        // Hide project/task/subtask UI sections
-        document.getElementById("tasks-section").classList.add("hidden");
-        document.getElementById("subtasks-section").classList.add("hidden");
-        if (pollTimer) clearInterval(pollTimer);
-
-        updateAuthUI();
+      async function logout() {
+        try {
+          await fetch(API + "/auth/logout", {
+            method: "POST",
+            credentials: "include",
+          });
+        } catch (e) {
+          // ignore network errors on logout, clear client state regardless
+        }
+        handleLoggedOut();
       }
 
       async function loadProjects() {
@@ -344,11 +383,11 @@
             projects
               .map(
                 (p) => `
-      <div class="project-item ${p.id === activeProjectId ? "active" : ""}" onclick="selectProject(${p.id}, '${escapeHtml(p.name)}')">
-        <strong>${escapeHtml(p.name)}</strong>
-        ${p.description ? `<div class="muted">${escapeHtml(p.description)}</div>` : ""}
-      </div>
-    `,
+    <div class="project-item ${p.id === activeProjectId ? "active" : ""}" onclick="selectProject(${p.id}, '${escapeHtml(p.name)}')">
+      <strong>${escapeHtml(p.name)}</strong>
+      ${p.description ? `<div class="muted">${escapeHtml(p.description)}</div>` : ""}
+    </div>
+  `,
               )
               .join("") ||
             '<p class="muted">No projects yet. Create one above.</p>';
@@ -378,6 +417,8 @@
         activeProjectId = id;
         activeTaskId = null;
         document.getElementById("active-project-name").textContent = name;
+        document.getElementById("download-report-link").href =
+          `/reports/${id}/pdf`;
         document.getElementById("tasks-section").classList.remove("hidden");
         document.getElementById("subtasks-section").classList.add("hidden");
         if (pollTimer) clearInterval(pollTimer);
@@ -393,11 +434,11 @@
             tasks
               .map(
                 (t) => `
-      <div class="task-item ${t.id === activeTaskId ? "active" : ""}" onclick="selectTask(${t.id}, '${escapeHtml(t.raw_description).replace(/'/g, "\\'")}')">
-        ${escapeHtml(t.raw_description)}
-        <span class="badge ${t.status}">${t.status}</span>
-      </div>
-    `,
+    <div class="task-item ${t.id === activeTaskId ? "active" : ""}" onclick="selectTask(${t.id}, '${escapeHtml(t.raw_description).replace(/'/g, "\\'")}')">
+      ${escapeHtml(t.raw_description)}
+      <span class="badge ${t.status}">${t.status}</span>
+    </div>
+  `,
               )
               .join("") || '<p class="muted">No tasks yet. Add one above.</p>';
         } catch (e) {
@@ -416,29 +457,6 @@
           });
           document.getElementById("task-desc").value = "";
           loadTasks();
-        } catch (e) {
-          showError(e.message);
-        }
-      }
-
-      async function downloadReport() {
-        try {
-          const res = await fetch(`/reports/${activeProjectId}/pdf`, {
-            headers: { Authorization: "Bearer " + token },
-          });
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || "Failed to generate report");
-          }
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "devflow-report.pdf";
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
         } catch (e) {
           showError(e.message);
         }
@@ -514,16 +532,16 @@
         list.innerHTML = subtasks
           .map(
             (s) => `
-    <div class="subtask">
-      <select onchange="updateStatus(${s.id}, this.value)">
-        <option value="todo" ${s.status === "todo" ? "selected" : ""}>todo</option>
-        <option value="in_progress" ${s.status === "in_progress" ? "selected" : ""}>in_progress</option>
-        <option value="done" ${s.status === "done" ? "selected" : ""}>done</option>
-      </select>
-      <span style="flex:1">${escapeHtml(s.description)}</span>
-      <span class="badge ${s.status}">${s.status}</span>
-    </div>
-  `,
+  <div class="subtask">
+    <select onchange="updateStatus(${s.id}, this.value)">
+      <option value="todo" ${s.status === "todo" ? "selected" : ""}>todo</option>
+      <option value="in_progress" ${s.status === "in_progress" ? "selected" : ""}>in_progress</option>
+      <option value="done" ${s.status === "done" ? "selected" : ""}>done</option>
+    </select>
+    <span style="flex:1">${escapeHtml(s.description)}</span>
+    <span class="badge ${s.status}">${s.status}</span>
+  </div>
+`,
           )
           .join("");
 
@@ -552,7 +570,7 @@
         return div.innerHTML;
       }
 
-      updateAuthUI();
+      checkSession();
     </script>
   </body>
 </html>

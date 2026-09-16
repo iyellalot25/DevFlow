@@ -91,6 +91,15 @@ async function verifyRefreshToken(plainToken) {
   return result.rows[0] || null;
 }
 
+async function revokeRefreshToken(plainToken) {
+  const tokenHash = hashRefreshToken(plainToken);
+  await pool.query(
+    `UPDATE refresh_tokens SET revoked_at = now()
+     WHERE token_hash = $1 AND revoked_at IS NULL`,
+    [tokenHash],
+  );
+}
+
 module.exports = {
   registerUser,
   findUserByEmail,
@@ -98,4 +107,5 @@ module.exports = {
   generateToken,
   issueRefreshToken,
   verifyRefreshToken,
+  revokeRefreshToken,
 };
