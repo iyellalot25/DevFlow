@@ -1,7 +1,6 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const MODEL_NAME = "gemini-2.5-flash";
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const SYSTEM_INSTRUCTION = `You are a task decomposition assistant for a software development tracking tool.
 Given a developer's description of an engineering task, break it down into clear, actionable implementation subtasks.
@@ -16,7 +15,11 @@ Rules:
 Example output format:
 ["Configure PostgreSQL connection", "Create the required database table", "Replace SQLite queries with PostgreSQL equivalents"]`;
 
-async function decomposeTask(rawDescription) {
+// apiKeyOverride: a team's own key, if they've set one; falls back to the
+// server-wide default key otherwise.
+async function decomposeTask(rawDescription, apiKeyOverride) {
+  const apiKey = apiKeyOverride || process.env.GEMINI_API_KEY;
+  const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
     model: MODEL_NAME,
     systemInstruction: SYSTEM_INSTRUCTION,

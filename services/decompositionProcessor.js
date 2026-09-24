@@ -1,5 +1,6 @@
 const llmService = require("./llmService");
 const { parseAndValidateSubtasks } = require("./decompositionValidator");
+const teamService = require("./teamService");
 const pool = require("../db");
 
 const MIN_INPUT_LENGTH = 5;
@@ -7,7 +8,10 @@ const MAX_INPUT_LENGTH = 2000;
 
 async function processDecompositionJob(taskId) {
   const taskResult = await pool.query(
-    `SELECT raw_description FROM tasks WHERE id = $1`,
+    `SELECT t.raw_description, p.team_id
+     FROM tasks t
+     JOIN projects p ON p.id = t.project_id
+     WHERE t.id = $1`,
     [taskId],
   );
 
@@ -15,7 +19,8 @@ async function processDecompositionJob(taskId) {
     throw new Error(`Task ${taskId} not found`);
   }
 
-  const rawDescription = taskResult.rows[0].raw_description;
+  const { raw_description: rawDescription, team_id: teamId } =
+    taskResult.rows[0];
 
   if (!rawDescription || rawDescription.trim().length < MIN_INPUT_LENGTH) {
     throw new Error("Task description is too short to decompose");
@@ -24,7 +29,11 @@ async function processDecompositionJob(taskId) {
     throw new Error("Task description is too long to decompose");
   }
 
-  const llmResponse = await llmService.decomposeTask(rawDescription);
+  const customApiKey = await teamService.getDecryptedGeminiKey(teamId);
+  const llmResponse = await llmService.decomposeTask(
+    rawDescription,
+    customApiKey,
+  );
   const subtasks = parseAndValidateSubtasks(llmResponse.rawText);
 
   // Persist subtasks into the real subtasks table

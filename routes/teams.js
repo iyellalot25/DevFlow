@@ -154,4 +154,48 @@ router.post("/teams/regenerate-code", async (req, res) => {
   }
 });
 
+router.post("/teams/gemini-key", async (req, res) => {
+  const { api_key } = req.body;
+
+  if (!api_key || typeof api_key !== "string" || api_key.trim().length < 10) {
+    return res.status(400).json({ error: "A valid api_key is required" });
+  }
+
+  try {
+    const team = await teamService.getTeamWithMembers(req.user.team_id);
+    if (!team) return res.status(404).json({ error: "Team not found" });
+
+    if (team.created_by !== req.user.user_id) {
+      return res.status(403).json({
+        error: "Only the team creator can set the team's Gemini API key",
+      });
+    }
+
+    await teamService.setGeminiKey(req.user.team_id, api_key.trim());
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/teams/gemini-key", async (req, res) => {
+  try {
+    const team = await teamService.getTeamWithMembers(req.user.team_id);
+    if (!team) return res.status(404).json({ error: "Team not found" });
+
+    if (team.created_by !== req.user.user_id) {
+      return res.status(403).json({
+        error: "Only the team creator can remove the team's Gemini API key",
+      });
+    }
+
+    await teamService.removeGeminiKey(req.user.team_id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 module.exports = router;

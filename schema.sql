@@ -57,6 +57,9 @@ UPDATE teams
 SET join_code = upper(substr(md5(random()::text || id::text), 1, 10))
 WHERE join_code IS NULL;
 
+ALTER TABLE teams
+  ADD COLUMN IF NOT EXISTS gemini_api_key_encrypted TEXT;
+
 CREATE TABLE IF NOT EXISTS refresh_tokens (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

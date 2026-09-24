@@ -1,5 +1,6 @@
 const pool = require("../db");
 const crypto = require("crypto");
+const { encrypt, decrypt } = require("./cryptoService");
 
 function generateJoinCode() {
   return crypto.randomBytes(5).toString("hex").toUpperCase(); // 10 hex chars
@@ -15,7 +16,9 @@ async function findTeamByJoinCode(joinCode) {
 
 async function getTeamWithMembers(teamId) {
   const teamResult = await pool.query(
-    `SELECT id, name, join_code, created_by FROM teams WHERE id = $1`,
+    `SELECT id, name, join_code, created_by,
+            (gemini_api_key_encrypted IS NOT NULL) AS has_custom_gemini_key
+     FROM teams WHERE id = $1`,
     [teamId],
   );
   const team = teamResult.rows[0];
@@ -31,8 +34,45 @@ async function getTeamWithMembers(teamId) {
     name: team.name,
     join_code: team.join_code,
     created_by: team.created_by,
+    has_custom_gemini_key: team.has_custom_gemini_key,
     members: membersResult.rows,
   };
+}
+
+// The plaintext key is only ever decrypted server-side, right before an
+// LLM call — it is never sent back to any client.
+async function setGeminiKey(teamId, plainKey) {
+  const encrypted = encrypt(plainKey);
+  await pool.query(
+    `UPDATE teams SET gemini_api_key_encrypted = $1 WHERE id = $2`,
+    [encrypted, teamId],
+  );
+}
+
+async function removeGeminiKey(teamId) {
+  await pool.query(
+    `UPDATE teams SET gemini_api_key_encrypted = NULL WHERE id = $1`,
+    [teamId],
+  );
+}
+
+async function getDecryptedGeminiKey(teamId) {
+  const result = await pool.query(
+    `SELECT gemini_api_key_encrypted FROM teams WHERE id = $1`,
+    [teamId],
+  );
+  const row = result.rows[0];
+  if (!row || !row.gemini_api_key_encrypted) return null;
+
+  try {
+    return decrypt(row.gemini_api_key_encrypted);
+  } catch (err) {
+    console.error(
+      `[teamService] failed to decrypt gemini key for team ${teamId}, falling back to shared key:`,
+      err.message,
+    );
+    return null;
+  }
 }
 
 // Moves a user into targetTeamId. If their old team has zero members left
@@ -171,4 +211,7 @@ module.exports = {
   joinTeamByCode,
   removeMember,
   regenerateJoinCode,
+  setGeminiKey,
+  removeGeminiKey,
+  getDecryptedGeminiKey,
 };
