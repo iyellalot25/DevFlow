@@ -12,20 +12,21 @@
     />
     <style>
       :root {
-        --paper: #f6f7f5;
-        --panel: #fbfbfa;
-        --ink: #14181f;
-        --ink-muted: #5b6270;
-        --blueprint: #1b3a6b;
-        --blueprint-hover: #16305a;
-        --slate: #d7dce3;
-        --slate-light: #eceef1;
-        --moss: #2f6f62;
-        --moss-bg: #e6efec;
-        --ochre: #b8792e;
-        --ochre-bg: #f5ead9;
-        --brick: #a23e36;
-        --brick-bg: #f6e6e4;
+        --paper: #0f1b2e;
+        --panel: #142338;
+        --surface: #1b2c46;
+        --ink: #e7ecf3;
+        --ink-muted: #8fa3c0;
+        --blueprint: #5b9bf0;
+        --blueprint-hover: #7ab0f5;
+        --slate: #2a3c58;
+        --slate-light: #21324c;
+        --moss: #59c2a0;
+        --moss-bg: #16332b;
+        --ochre: #e3a85c;
+        --ochre-bg: #3a2c16;
+        --brick: #e8776a;
+        --brick-bg: #3a1e1b;
         --radius: 2px;
         --font-sans: "IBM Plex Sans", system-ui, sans-serif;
         --font-mono: "IBM Plex Mono", ui-monospace, monospace;
@@ -45,7 +46,13 @@
         font-family: var(--font-sans);
         color: var(--ink);
         background-color: var(--paper);
-        background-image: radial-gradient(var(--slate) 1px, transparent 1px);
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+          linear-gradient(
+            to right,
+            rgba(255, 255, 255, 0.04) 1px,
+            transparent 1px
+          );
         background-size: 24px 24px;
         font-size: 14px;
         line-height: 1.5;
@@ -103,7 +110,7 @@
         background: var(--blueprint-hover);
       }
       .btn-secondary {
-        background: white;
+        background: var(--surface);
         border-color: var(--slate);
         color: var(--ink);
       }
@@ -111,7 +118,7 @@
         border-color: var(--blueprint);
       }
       .btn-danger {
-        background: white;
+        background: var(--surface);
         border-color: var(--brick);
         color: var(--brick);
       }
@@ -139,7 +146,7 @@
         border: 1px solid var(--slate);
         border-radius: var(--radius);
         padding: 8px 10px;
-        background: white;
+        background: var(--surface);
         color: var(--ink);
       }
       input:focus,
@@ -160,7 +167,7 @@
         padding: 10px 18px;
         border-radius: var(--radius);
         font-size: 13px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
       }
       #toast.error {
         background: var(--brick-bg);
@@ -501,7 +508,8 @@
         border: 1px solid var(--slate);
         border-radius: var(--radius);
         padding: 4px 6px;
-        background: white;
+        background: var(--surface);
+        color: var(--ink);
       }
       .subtask-row .subtask-desc {
         flex: 1;
