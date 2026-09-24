@@ -382,6 +382,29 @@
         letter-spacing: 0.05em;
       }
 
+      .usage-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 3px 0;
+      }
+      .usage-quota-track {
+        height: 4px;
+        background: var(--slate-light);
+        border-radius: var(--radius);
+        overflow: hidden;
+        margin: 6px 0 10px;
+      }
+      .usage-quota-fill {
+        height: 100%;
+        background: var(--blueprint);
+      }
+      .usage-quota-fill.warn {
+        background: var(--ochre);
+      }
+      .usage-quota-fill.full {
+        background: var(--brick);
+      }
+
       .collapsible summary {
         cursor: pointer;
         font-size: 13px;
@@ -620,6 +643,13 @@
               </button>
             </form>
           </details>
+        </section>
+
+        <section class="panel">
+          <h2>// usage</h2>
+          <div id="usage-info" class="muted" style="font-size: 13px">
+            Loading…
+          </div>
         </section>
 
         <section class="panel">
@@ -915,6 +945,7 @@
         document.getElementById("app-shell").classList.remove("hidden");
         await loadTeam();
         await loadProjects();
+        await loadUsage();
       }
 
       async function checkSession() {
@@ -927,6 +958,31 @@
         } catch (e) {
           handleLoggedOut();
         }
+      }
+
+      /* ================= USAGE ================= */
+      async function loadUsage() {
+        try {
+          const usage = await api("/usage");
+          renderUsage(usage);
+        } catch (err) {
+          document.getElementById("usage-info").textContent =
+            "Unable to load usage.";
+        }
+      }
+
+      function renderUsage(usage) {
+        const pct = Math.min(
+          100,
+          Math.round((usage.used_today / usage.quota_limit) * 100),
+        );
+        const fillClass = pct >= 100 ? "full" : pct >= 80 ? "warn" : "";
+        document.getElementById("usage-info").innerHTML = `
+        <div class="usage-row"><span>Decompositions today</span><span class="mono">${usage.used_today} / ${usage.quota_limit}</span></div>
+        <div class="usage-quota-track"><div class="usage-quota-fill ${fillClass}" style="width:${pct}%"></div></div>
+        <div class="usage-row"><span>Total jobs run</span><span class="mono">${usage.jobs_total}</span></div>
+        <div class="usage-row"><span>Tokens used (lifetime)</span><span class="mono">${usage.total_prompt_tokens + usage.total_completion_tokens}</span></div>
+      `;
       }
 
       /* ================= TEAM ================= */
@@ -1373,6 +1429,7 @@
               document.getElementById("decompose-btn").disabled = false;
               await loadSubtasks();
               await loadTasks();
+              await loadUsage();
             } else if (job.status === "failed") {
               clearInterval(state.pollTimer);
               document.getElementById("decompose-btn").disabled = false;
