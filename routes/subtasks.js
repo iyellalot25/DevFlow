@@ -80,4 +80,17 @@ router.patch("/subtasks/:id", async (req, res) => {
   }
 });
 
+router.delete("/subtasks/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const deleted = await subtaskService.deleteSubtask(id, req.user.team_id);
+    if (!deleted) return res.status(404).json({ error: "Subtask not found" });
+    res.status(204).send();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 module.exports = router;

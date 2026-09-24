@@ -29,4 +29,32 @@ async function projectExistsForTeam(projectId, teamId) {
   return result.rows.length > 0;
 }
 
-module.exports = { createProject, listProjects, projectExistsForTeam };
+// Caller must have already confirmed ownership via projectExistsForTeam.
+// COALESCE means omitting a field leaves it unchanged, rather than nulling it.
+async function updateProject(projectId, name, description) {
+  const result = await pool.query(
+    `UPDATE projects
+     SET name = COALESCE($1, name),
+         description = COALESCE($2, description)
+     WHERE id = $3
+     RETURNING id, team_id, name, description, created_at`,
+    [name || null, description || null, projectId],
+  );
+  return result.rows[0];
+}
+
+async function deleteProject(projectId) {
+  const result = await pool.query(
+    `DELETE FROM projects WHERE id = $1 RETURNING id`,
+    [projectId],
+  );
+  return result.rows.length > 0;
+}
+
+module.exports = {
+  createProject,
+  listProjects,
+  projectExistsForTeam,
+  updateProject,
+  deleteProject,
+};

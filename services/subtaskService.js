@@ -39,9 +39,24 @@ async function updateSubtaskStatus(subtaskId, status, teamId) {
   return result.rows[0] || null;
 }
 
+async function deleteSubtask(subtaskId, teamId) {
+  const result = await pool.query(
+    `DELETE FROM subtasks s
+     USING tasks t, projects p
+     WHERE s.id = $1
+       AND s.task_id = t.id
+       AND t.project_id = p.id
+       AND p.team_id = $2
+     RETURNING s.id`,
+    [subtaskId, teamId],
+  );
+  return result.rows.length > 0;
+}
+
 module.exports = {
   createSubtask,
   listSubtasksForTask,
   updateSubtaskStatus,
+  deleteSubtask,
   VALID_SUBTASK_STATUSES,
 };

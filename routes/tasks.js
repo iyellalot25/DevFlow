@@ -55,4 +55,47 @@ router.get("/projects/:projectId/tasks", async (req, res) => {
   }
 });
 
+router.patch("/tasks/:id", async (req, res) => {
+  const { id } = req.params;
+  const { raw_description } = req.body;
+
+  if (
+    raw_description !== undefined &&
+    (typeof raw_description !== "string" || raw_description.trim() === "")
+  ) {
+    return res
+      .status(400)
+      .json({ error: "raw_description must be a non-empty string" });
+  }
+
+  try {
+    const exists = await taskService.taskExistsForTeam(id, req.user.team_id);
+    if (!exists) return res.status(404).json({ error: "Task not found" });
+
+    const updated = await taskService.updateTask(
+      id,
+      raw_description ? raw_description.trim() : undefined,
+    );
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/tasks/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const exists = await taskService.taskExistsForTeam(id, req.user.team_id);
+    if (!exists) return res.status(404).json({ error: "Task not found" });
+
+    await taskService.deleteTask(id);
+    res.status(204).send();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 module.exports = router;
