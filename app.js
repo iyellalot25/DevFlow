@@ -2,6 +2,7 @@ const express = require("express");
 const cookieParser = require("cookie-parser");
 require("dotenv").config();
 
+const pool = require("./db");
 const authRouter = require("./routes/auth");
 const projectsRouter = require("./routes/projects");
 const tasksRouter = require("./routes/tasks");
@@ -15,6 +16,16 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.static("public"));
+
+app.get("/health", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.json({ status: "ok" });
+  } catch (err) {
+    console.error("[health] DB check failed:", err.message);
+    res.status(503).json({ status: "error", error: "Database unreachable" });
+  }
+});
 
 // ROUTES
 app.use("/auth", authRouter);

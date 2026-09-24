@@ -1,11 +1,20 @@
 const express = require("express");
 const router = express.Router();
+const rateLimit = require("express-rate-limit");
 const authService = require("../services/authService");
 const teamService = require("../services/teamService");
 const requireAuth = require("../middleware/auth");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const isProd = process.env.NODE_ENV === "production";
+
+const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many attempts. Try again in a few minutes." },
+});
 
 function setAuthCookies(res, token, refreshToken) {
   res.cookie("devflow_token", token, {
@@ -23,7 +32,7 @@ function setAuthCookies(res, token, refreshToken) {
   });
 }
 
-router.post("/register", async (req, res) => {
+router.post("/register", authRateLimiter, async (req, res) => {
   const { email, password, join_code } = req.body;
 
   //Validation
@@ -75,7 +84,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-router.post("/login", async (req, res) => {
+router.post("/login", authRateLimiter, async (req, res) => {
   const { email, password } = req.body;
 
   //Validation
