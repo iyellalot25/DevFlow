@@ -1160,6 +1160,7 @@
           });
           showToast("Gemini API key saved", "success");
           await loadTeam();
+          await loadUsage();
         } catch (err) {
           showToast(err.message);
         }
@@ -1177,6 +1178,7 @@
           await api("/teams/gemini-key", { method: "DELETE" });
           showToast("Custom key removed", "success");
           await loadTeam();
+          await loadUsage();
         } catch (err) {
           showToast(err.message);
         }
