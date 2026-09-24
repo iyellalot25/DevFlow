@@ -60,6 +60,9 @@ WHERE join_code IS NULL;
 ALTER TABLE teams
   ADD COLUMN IF NOT EXISTS gemini_api_key_encrypted TEXT;
 
+ALTER TABLE teams
+  ADD COLUMN IF NOT EXISTS usage_reset_at TIMESTAMPTZ;
+
 CREATE TABLE IF NOT EXISTS refresh_tokens (
   id SERIAL PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

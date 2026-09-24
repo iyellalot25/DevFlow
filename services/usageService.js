@@ -3,13 +3,18 @@ const pool = require("../db");
 const DAILY_QUOTA = 50;
 
 async function getTeamUsage(teamId) {
+  // "Today" starts at midnight, OR at the team's last quota reset
+  // (e.g. when they added a custom Gemini key), whichever is later.
   const todayResult = await pool.query(
     `SELECT count(*)::int AS count
      FROM decomposition_jobs dj
      JOIN tasks t ON t.id = dj.task_id
      JOIN projects p ON p.id = t.project_id
      WHERE p.team_id = $1
-       AND dj.created_at >= date_trunc('day', now())`,
+       AND dj.created_at >= GREATEST(
+         date_trunc('day', now()),
+         COALESCE((SELECT usage_reset_at FROM teams WHERE id = $1), '-infinity'::timestamptz)
+       )`,
     [teamId],
   );
 

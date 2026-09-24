@@ -43,8 +43,12 @@ async function getTeamWithMembers(teamId) {
 // LLM call — it is never sent back to any client.
 async function setGeminiKey(teamId, plainKey) {
   const encrypted = encrypt(plainKey);
+  // usage_reset_at gives the team a fresh daily quota window starting now,
+  // rather than inheriting whatever was already used against the shared key.
   await pool.query(
-    `UPDATE teams SET gemini_api_key_encrypted = $1 WHERE id = $2`,
+    `UPDATE teams
+     SET gemini_api_key_encrypted = $1, usage_reset_at = now()
+     WHERE id = $2`,
     [encrypted, teamId],
   );
 }
