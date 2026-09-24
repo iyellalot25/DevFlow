@@ -2,12 +2,15 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const pool = require("../db");
+const { generateJoinCode } = require("./teamService");
 
 const SALT_ROUNDS = 10;
 const JWT_EXPIRY = "1h";
 const REFRESH_TOKEN_TTL_DAYS = 7;
 
-async function registerUser(email, password) {
+// existingTeamId: pass a team id to join that team instead of creating a
+// new one (used when a valid join_code was provided at registration).
+async function registerUser(email, password, existingTeamId = null) {
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
   const client = await pool.connect();
@@ -15,11 +18,16 @@ async function registerUser(email, password) {
     //Transaction Safety
     await client.query("BEGIN");
 
-    const teamResult = await client.query(
-      `INSERT INTO teams (name) VALUES ($1) RETURNING id`,
-      [`${email}'s team`],
-    );
-    const teamId = teamResult.rows[0].id;
+    let teamId = existingTeamId;
+
+    if (!teamId) {
+      const newJoinCode = generateJoinCode();
+      const teamResult = await client.query(
+        `INSERT INTO teams (name, join_code) VALUES ($1, $2) RETURNING id`,
+        [`${email}'s team`, newJoinCode],
+      );
+      teamId = teamResult.rows[0].id;
+    }
 
     const userResult = await client.query(
       `INSERT INTO users (team_id, email, password_hash)
@@ -27,6 +35,15 @@ async function registerUser(email, password) {
        RETURNING id, team_id, email, created_at`,
       [teamId, email, passwordHash],
     );
+
+    // Only the creator of a brand-new team gets removal rights on it —
+    // someone joining an existing team via join_code is just a member.
+    if (!existingTeamId) {
+      await client.query(`UPDATE teams SET created_by = $1 WHERE id = $2`, [
+        userResult.rows[0].id,
+        teamId,
+      ]);
+    }
 
     await client.query("COMMIT");
     return userResult.rows[0];

@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const authService = require("../services/authService");
+const teamService = require("../services/teamService");
 const requireAuth = require("../middleware/auth");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -23,7 +24,7 @@ function setAuthCookies(res, token, refreshToken) {
 }
 
 router.post("/register", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, join_code } = req.body;
 
   //Validation
   if (!email || typeof email !== "string" || !EMAIL_REGEX.test(email)) {
@@ -41,7 +42,25 @@ router.post("/register", async (req, res) => {
       return res.status(409).json({ error: "Email already registered" });
     }
 
-    const user = await authService.registerUser(email, password);
+    let existingTeamId = null;
+    if (join_code) {
+      if (typeof join_code !== "string") {
+        return res.status(400).json({ error: "join_code must be a string" });
+      }
+      const team = await teamService.findTeamByJoinCode(
+        join_code.trim().toUpperCase(),
+      );
+      if (!team) {
+        return res.status(400).json({ error: "Invalid join code" });
+      }
+      existingTeamId = team.id;
+    }
+
+    const user = await authService.registerUser(
+      email,
+      password,
+      existingTeamId,
+    );
     const token = authService.generateToken(user);
     const refreshToken = await authService.issueRefreshToken(user.id);
 

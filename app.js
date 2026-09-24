@@ -9,6 +9,7 @@ const subtasksRouter = require("./routes/subtasks");
 const jobsRouter = require("./routes/jobs");
 const startWorker = require("./worker");
 const reportsRouter = require("./routes/reports");
+const teamsRouter = require("./routes/teams");
 
 const app = express();
 app.use(express.json());
@@ -22,9 +23,11 @@ app.use("/", tasksRouter);
 app.use("/", subtasksRouter);
 app.use("/", jobsRouter);
 app.use("/", reportsRouter);
+app.use("/", teamsRouter);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`DevFlow listening on port ${PORT}`);
   startWorker();
 });

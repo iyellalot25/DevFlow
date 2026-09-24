@@ -42,11 +42,20 @@ END $$;
 
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
-  team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  team_id INTEGER NOT NULL REFERENCES teams(id),
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE teams
+  ADD COLUMN IF NOT EXISTS join_code TEXT UNIQUE,
+  ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+
+-- Backfill any existing teams that predate join codes (safe to re-run — only touches NULLs)
+UPDATE teams
+SET join_code = upper(substr(md5(random()::text || id::text), 1, 10))
+WHERE join_code IS NULL;
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (
   id SERIAL PRIMARY KEY,
@@ -71,3 +80,16 @@ ALTER TABLE decomposition_jobs
   ADD COLUMN IF NOT EXISTS prompt_tokens INTEGER,
   ADD COLUMN IF NOT EXISTS completion_tokens INTEGER,
   ADD COLUMN IF NOT EXISTS model_name TEXT;
+
+  -- Migration: Safely remove ON DELETE CASCADE from users_team_id_fkey if it exists
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'users_team_id_fkey'
+  ) THEN
+    ALTER TABLE users DROP CONSTRAINT users_team_id_fkey;
+    ALTER TABLE users 
+      ADD CONSTRAINT users_team_id_fkey 
+      FOREIGN KEY (team_id) REFERENCES teams(id);
+  END IF;
+END $$;
