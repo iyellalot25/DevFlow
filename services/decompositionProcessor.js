@@ -40,6 +40,8 @@ async function processDecompositionJob(taskId) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    //Delete existing subtasks (in case of re-decomposing)
+    await client.query(`DELETE FROM subtasks WHERE task_id = $1`, [taskId]);
     for (const subtask of subtasks) {
       await client.query(
         `INSERT INTO subtasks (task_id, description, position)
