@@ -812,6 +812,7 @@
         activeProjectId: null,
         activeTaskId: null,
         pollTimer: null,
+        eventSource: null,
       };
 
       /* ================= HELPERS ================= */
@@ -959,12 +960,51 @@
         handleLoggedOut();
       }
 
+      /* ================= REALTIME (SSE) ================= */
+      function connectStream() {
+        disconnectStream(); // never leave a stale connection open
+        state.eventSource = new EventSource("/teams/stream");
+
+        state.eventSource.addEventListener("projects:changed", async () => {
+          await loadProjects();
+          if (state.activeProjectId) renderProjectHeader();
+        });
+
+        state.eventSource.addEventListener("tasks:changed", async () => {
+          if (!state.activeProjectId) return;
+          await loadTasks();
+          if (state.activeTaskId) renderTaskHeader();
+        });
+
+        state.eventSource.addEventListener("subtasks:changed", async () => {
+          if (state.activeProjectId) await loadTasks(); // catches status -> decomposed
+          if (state.activeTaskId) await loadSubtasks();
+          await loadUsage(); // decomposition jobs affect quota/tokens
+        });
+
+        state.eventSource.addEventListener("team:changed", async () => {
+          await loadTeam();
+          await loadUsage(); // membership/key changes can affect quota
+        });
+
+        // EventSource reconnects automatically on drop (e.g. Render cold start);
+        // no manual retry logic needed here.
+      }
+
+      function disconnectStream() {
+        if (state.eventSource) {
+          state.eventSource.close();
+          state.eventSource = null;
+        }
+      }
+
       function handleLoggedOut() {
         state.currentUserId = null;
         state.currentEmail = null;
         state.activeProjectId = null;
         state.activeTaskId = null;
         if (state.pollTimer) clearInterval(state.pollTimer);
+        disconnectStream();
         document.getElementById("app-shell").classList.add("hidden");
         document.getElementById("auth-screen").classList.remove("hidden");
       }
@@ -975,6 +1015,7 @@
         await loadTeam();
         await loadProjects();
         await loadUsage();
+        connectStream();
       }
 
       async function checkSession() {
@@ -1115,6 +1156,7 @@
           });
           input.value = "";
           showToast("Joined team", "success");
+          connectStream();
           await loadTeam();
           state.activeProjectId = null;
           state.activeTaskId = null;
@@ -1138,6 +1180,7 @@
         try {
           await api("/teams/leave", { method: "POST" });
           showToast("Left team", "success");
+          connectStream();
           await loadTeam();
           state.activeProjectId = null;
           state.activeTaskId = null;

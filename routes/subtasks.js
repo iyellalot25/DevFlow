@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const subtaskService = require("../services/subtaskService");
 const taskService = require("../services/taskService");
+const sseService = require("../services/sseService");
 const requireAuth = require("../middleware/auth");
 
 router.use(requireAuth);
