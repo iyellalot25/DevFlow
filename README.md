@@ -4,7 +4,7 @@
 
 DevFlow is a multi-user backend system for teams that plan software work in one-liners and forget to break them down until it's too late. Describe a task in plain English, let a narrowly-scoped AI job decompose it into concrete implementation steps, then track, update, and report on progress — all through a real REST API backing a live dashboard.
 
-> 🔗 **Live demo:** `https://devflow-l22x.onrender.com` — free-tier hosting, so the first request after idle may take ~30–50s to wake up.
+> 🔗 **Live demo:** `[https://devflow-l22x.onrender.com](https://devflow-l22x.onrender.com)` — free-tier hosting, so the first request after idle may take ~30–50s to wake up.
 
 ---
 
@@ -128,7 +128,7 @@ No paid services required anywhere.
 ### Setup
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/iyellalot25/DevFlow
 cd devflow
 npm install
 cp .env.example .env   # then fill in real values
