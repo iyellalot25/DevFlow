@@ -526,12 +526,19 @@
         background: var(--slate-light);
         border-radius: var(--radius);
         overflow: hidden;
+        display: flex;
       }
       .progress-fill {
         height: 100%;
-        background: var(--moss);
         width: 0%;
+        flex-shrink: 0;
         transition: width 0.3s ease;
+      }
+      .progress-fill.done {
+        background: var(--moss);
+      }
+      .progress-fill.in-progress {
+        background: var(--blueprint);
       }
 
       .subtask-row {
@@ -771,7 +778,11 @@
               <span id="progress-text" class="mono muted"></span>
             </div>
             <div class="progress-track">
-              <div id="progress-fill" class="progress-fill"></div>
+              <div id="progress-fill-done" class="progress-fill done"></div>
+              <div
+                id="progress-fill-inprogress"
+                class="progress-fill in-progress"
+              ></div>
             </div>
           </div>
 
@@ -1554,7 +1565,9 @@
         if (state.subtasks.length === 0) {
           list.innerHTML =
             '<li class="muted" style="padding:8px 0">No subtasks yet. Decompose with AI, or add one manually.</li>';
-          document.getElementById("progress-fill").style.width = "0%";
+          document.getElementById("progress-fill-done").style.width = "0%";
+          document.getElementById("progress-fill-inprogress").style.width =
+            "0%";
           document.getElementById("progress-text").textContent = "";
           return;
         }
@@ -1573,11 +1586,19 @@
           )
           .join("");
 
+        const total = state.subtasks.length;
         const done = state.subtasks.filter((s) => s.status === "done").length;
-        const pct = Math.round((done / state.subtasks.length) * 100);
-        document.getElementById("progress-fill").style.width = pct + "%";
+        const inProgress = state.subtasks.filter(
+          (s) => s.status === "in_progress",
+        ).length;
+        const donePct = Math.round((done / total) * 100);
+        const inProgressPct = Math.round((inProgress / total) * 100);
+        document.getElementById("progress-fill-done").style.width =
+          donePct + "%";
+        document.getElementById("progress-fill-inprogress").style.width =
+          inProgressPct + "%";
         document.getElementById("progress-text").textContent =
-          `${done} / ${state.subtasks.length} done (${pct}%)`;
+          `${done} done, ${inProgress} in progress / ${total} total (${donePct}%)`;
       }
 
       async function handleAddSubtask(e) {
