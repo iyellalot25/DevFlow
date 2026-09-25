@@ -24,6 +24,8 @@ async function getProjectReportData(projectId, teamId) {
   const tasks = [];
   let totalSubtasks = 0;
   let totalDone = 0;
+  let totalInProgress = 0;
+  let totalTodo = 0;
 
   //Get subtasks
   for (const task of tasksResult.rows) {
@@ -35,15 +37,23 @@ async function getProjectReportData(projectId, teamId) {
     );
     const subtasks = subtasksResult.rows;
     const doneCount = subtasks.filter((s) => s.status === "done").length;
+    const inProgressCount = subtasks.filter(
+      (s) => s.status === "in_progress",
+    ).length;
+    const todoCount = subtasks.filter((s) => s.status === "todo").length;
 
     totalSubtasks += subtasks.length;
     totalDone += doneCount;
+    totalInProgress += inProgressCount;
+    totalTodo += todoCount;
 
     tasks.push({
       ...task,
       subtasks,
       subtaskCount: subtasks.length,
       doneCount,
+      inProgressCount,
+      todoCount,
       percentComplete:
         subtasks.length > 0
           ? Math.round((doneCount / subtasks.length) * 100)
@@ -59,6 +69,8 @@ async function getProjectReportData(projectId, teamId) {
     tasks,
     totalSubtasks,
     totalDone,
+    totalInProgress,
+    totalTodo,
     overallPercent,
     generatedAt: new Date(),
   };
