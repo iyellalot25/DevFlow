@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const taskService = require("../services/taskService");
 const projectService = require("../services/projectService");
+const sseService = require("../services/sseService");
 const requireAuth = require("../middleware/auth");
 
 router.use(requireAuth);
@@ -30,6 +31,7 @@ router.post("/projects/:projectId/tasks", async (req, res) => {
       projectId,
       raw_description.trim(),
     );
+    sseService.broadcast(req.user.team_id, "tasks:changed");
     res.status(201).json(task);
   } catch (err) {
     console.error(err);
@@ -76,6 +78,7 @@ router.patch("/tasks/:id", async (req, res) => {
       id,
       raw_description ? raw_description.trim() : undefined,
     );
+    sseService.broadcast(req.user.team_id, "tasks:changed");
     res.json(updated);
   } catch (err) {
     console.error(err);
@@ -91,6 +94,7 @@ router.delete("/tasks/:id", async (req, res) => {
     if (!exists) return res.status(404).json({ error: "Task not found" });
 
     await taskService.deleteTask(id);
+    sseService.broadcast(req.user.team_id, "tasks:changed");
     res.status(204).send();
   } catch (err) {
     console.error(err);

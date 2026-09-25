@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const projectService = require("../services/projectService");
+const sseService = require("../services/sseService");
 const requireAuth = require("../middleware/auth");
 
 //Use auth middleware
@@ -20,6 +21,7 @@ router.post("/", async (req, res) => {
       name.trim(),
       description,
     );
+    sseService.broadcast(req.user.team_id, "projects:changed");
     res.status(201).json(project);
   } catch (err) {
     console.error(err);
@@ -57,6 +59,7 @@ router.patch("/:id", async (req, res) => {
       name ? name.trim() : undefined,
       description,
     );
+    sseService.broadcast(req.user.team_id, "projects:changed");
     res.json(updated);
   } catch (err) {
     console.error(err);
@@ -75,6 +78,7 @@ router.delete("/:id", async (req, res) => {
     if (!exists) return res.status(404).json({ error: "Project not found" });
 
     await projectService.deleteProject(id);
+    sseService.broadcast(req.user.team_id, "projects:changed");
     res.status(204).send();
   } catch (err) {
     console.error(err);

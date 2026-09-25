@@ -31,6 +31,7 @@ router.post("/tasks/:taskId/subtasks", async (req, res) => {
       description.trim(),
       position,
     );
+    sseService.broadcast(req.user.team_id, "subtasks:changed");
     res.status(201).json(subtask);
   } catch (err) {
     console.error(err);
@@ -73,6 +74,7 @@ router.patch("/subtasks/:id", async (req, res) => {
       req.user.team_id,
     );
     if (!updated) return res.status(404).json({ error: "Subtask not found" });
+    sseService.broadcast(req.user.team_id, "subtasks:changed");
     res.json(updated);
   } catch (err) {
     console.error(err);
@@ -86,6 +88,7 @@ router.delete("/subtasks/:id", async (req, res) => {
   try {
     const deleted = await subtaskService.deleteSubtask(id, req.user.team_id);
     if (!deleted) return res.status(404).json({ error: "Subtask not found" });
+    sseService.broadcast(req.user.team_id, "subtasks:changed");
     res.status(204).send();
   } catch (err) {
     console.error(err);

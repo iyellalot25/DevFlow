@@ -1,6 +1,7 @@
 const llmService = require("./llmService");
 const { parseAndValidateSubtasks } = require("./decompositionValidator");
 const teamService = require("./teamService");
+const sseService = require("./sseService");
 const pool = require("../db");
 
 const MIN_INPUT_LENGTH = 5;
@@ -53,6 +54,7 @@ async function processDecompositionJob(taskId) {
       taskId,
     ]);
     await client.query("COMMIT");
+    sseService.broadcast(teamId, "subtasks:changed");
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;

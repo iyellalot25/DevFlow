@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const teamService = require("../services/teamService");
+const sseService = require("../services/sseService");
 const authService = require("../services/authService");
 const requireAuth = require("../middleware/auth");
 
@@ -20,6 +21,28 @@ function setAccessTokenCookie(res, token) {
 }
 
 router.use(requireAuth);
+
+router.get("/teams/stream", (req, res) => {
+  res.set({
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  });
+  res.flushHeaders();
+
+  const teamId = req.user.team_id;
+  sseService.addConnection(teamId, res);
+  res.write(": connected\n\n");
+
+  const heartbeat = setInterval(() => {
+    res.write(": heartbeat\n\n");
+  }, 30000);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    sseService.removeConnection(teamId, res);
+  });
+});
 
 router.get("/teams/me", async (req, res) => {
   try {
@@ -69,6 +92,8 @@ router.post("/teams/join", async (req, res) => {
     });
     setAccessTokenCookie(res, token);
 
+    sseService.broadcast(req.user.team_id, "team:changed"); // old team lost a member
+    sseService.broadcast(team.id, "team:changed"); // new team gained one
     res.json({ ok: true, team_id: team.id });
   } catch (err) {
     console.error(err);
@@ -91,6 +116,8 @@ router.post("/teams/leave", async (req, res) => {
     });
     setAccessTokenCookie(res, token);
 
+    sseService.broadcast(req.user.team_id, "team:changed"); // old team lost a member
+    sseService.broadcast(newTeam.id, "team:changed"); // new solo team created
     res.json({ ok: true, team: newTeam });
   } catch (err) {
     console.error(err);
@@ -127,6 +154,7 @@ router.delete("/teams/members/:userId", async (req, res) => {
 
     // Remove targeted member into their own new solo team
     await teamService.removeMember(target.id, target.email);
+    sseService.broadcast(req.user.team_id, "team:changed");
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -147,6 +175,7 @@ router.post("/teams/regenerate-code", async (req, res) => {
     }
 
     const updated = await teamService.regenerateJoinCode(req.user.team_id);
+    sseService.broadcast(req.user.team_id, "team:changed");
     res.json(updated);
   } catch (err) {
     console.error(err);
@@ -172,6 +201,7 @@ router.post("/teams/gemini-key", async (req, res) => {
     }
 
     await teamService.setGeminiKey(req.user.team_id, api_key.trim());
+    sseService.broadcast(req.user.team_id, "team:changed");
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -191,6 +221,7 @@ router.delete("/teams/gemini-key", async (req, res) => {
     }
 
     await teamService.removeGeminiKey(req.user.team_id);
+    sseService.broadcast(req.user.team_id, "team:changed");
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
