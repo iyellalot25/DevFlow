@@ -1110,6 +1110,7 @@
           await loadProjects();
           renderTasksEmpty();
           renderSubtasksEmpty();
+          await loadUsage();
         } catch (err) {
           showToast(err.message);
         }
@@ -1132,6 +1133,7 @@
           await loadProjects();
           renderTasksEmpty();
           renderSubtasksEmpty();
+          await loadUsage();
         } catch (err) {
           showToast(err.message);
         }
